@@ -8,12 +8,12 @@ export declare class AuthController {
         user: {
             patient: {
                 id: string;
-                address: string | null;
                 userId: string;
                 firstName: string;
                 lastName: string;
                 dateOfBirth: Date | null;
                 gender: string | null;
+                address: string | null;
                 emergencyContact: string | null;
                 medicalNotes: string | null;
             };
@@ -25,8 +25,8 @@ export declare class AuthController {
                 licenseNumber: string | null;
             };
         } & {
-            id: string;
             email: string;
+            id: string;
             phone: string | null;
             role: import("@healthcare/common-lib").$Enums.UserRole;
             locale: string;
@@ -43,8 +43,8 @@ export declare class AuthController {
         accessToken: string;
         refreshToken: string;
         user: {
-            id: string;
             email: string;
+            id: string;
             phone: string | null;
             role: import("@healthcare/common-lib").$Enums.UserRole;
             locale: string;

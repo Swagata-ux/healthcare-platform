@@ -7,19 +7,19 @@ export declare class AuthService {
         user: {
             patient: {
                 id: string;
-                address: string | null;
                 userId: string;
                 firstName: string;
                 lastName: string;
                 dateOfBirth: Date | null;
                 gender: string | null;
+                address: string | null;
                 emergencyContact: string | null;
                 medicalNotes: string | null;
             };
             providerUser: {
                 id: string;
-                clinicId: string;
                 userId: string;
+                clinicId: string;
                 specialties: string[];
                 licenseNumber: string | null;
             };

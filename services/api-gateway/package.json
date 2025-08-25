@@ -12,20 +12,21 @@
     "test:contract": "npm run pact:verify"
   },
   "dependencies": {
+    "@apollo/server": "^4.7.5",
+    "@healthcare/common-lib": "file:../common-lib",
     "@nestjs/common": "^10.0.0",
     "@nestjs/core": "^10.0.0",
     "@nestjs/graphql": "^12.0.0",
     "@nestjs/platform-express": "^10.0.0",
     "@nestjs/throttler": "^4.2.1",
-    "@apollo/server": "^4.7.5",
+    "@opentelemetry/api": "^1.4.1",
+    "@opentelemetry/auto-instrumentations-node": "^0.39.4",
+    "@opentelemetry/sdk-node": "^0.41.2",
+    "@vercel/node": "^5.3.13",
+    "compression": "^1.7.4",
     "graphql": "^16.7.1",
     "helmet": "^7.0.0",
-    "compression": "^1.7.4",
-    "redis": "^4.6.7",
-    "@healthcare/common-lib": "file:../common-lib",
-    "@opentelemetry/api": "^1.4.1",
-    "@opentelemetry/sdk-node": "^0.41.2",
-    "@opentelemetry/auto-instrumentations-node": "^0.39.4"
+    "redis": "^4.6.7"
   },
   "devDependencies": {
     "@nestjs/cli": "^10.0.0",
