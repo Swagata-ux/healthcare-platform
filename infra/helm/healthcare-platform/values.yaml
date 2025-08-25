@@ -1,0 +1,132 @@
+global:
+  imageRegistry: ghcr.io
+  imagePullSecrets: []
+  storageClass: gp3
+
+replicaCount: 2
+environment: development
+
+image:
+  registry: ghcr.io
+  repository: healthcare-platform
+  tag: latest
+  pullPolicy: IfNotPresent
+
+services:
+  apiGateway:
+    name: api-gateway
+    port: 3000
+    targetPort: 3000
+    type: ClusterIP
+    
+  authSvc:
+    name: auth-svc
+    port: 3000
+    targetPort: 3000
+    type: ClusterIP
+    
+  bookingSvc:
+    name: booking-svc
+    port: 3000
+    targetPort: 3000
+    type: ClusterIP
+
+ingress:
+  enabled: true
+  className: alb
+  annotations:
+    kubernetes.io/ingress.class: alb
+    alb.ingress.kubernetes.io/scheme: internet-facing
+    alb.ingress.kubernetes.io/target-type: ip
+    alb.ingress.kubernetes.io/ssl-redirect: '443'
+    alb.ingress.kubernetes.io/certificate-arn: arn:aws:acm:us-west-2:123456789012:certificate/example
+  hosts:
+    - host: api.healthcare-platform.com
+      paths:
+        - path: /
+          pathType: Prefix
+          service: api-gateway
+  tls:
+    - secretName: healthcare-platform-tls
+      hosts:
+        - api.healthcare-platform.com
+
+resources:
+  limits:
+    cpu: 500m
+    memory: 512Mi
+  requests:
+    cpu: 250m
+    memory: 256Mi
+
+autoscaling:
+  enabled: true
+  minReplicas: 2
+  maxReplicas: 10
+  targetCPUUtilizationPercentage: 70
+  targetMemoryUtilizationPercentage: 80
+
+nodeSelector: {}
+tolerations: []
+affinity: {}
+
+podSecurityContext:
+  fsGroup: 1001
+  runAsNonRoot: true
+  runAsUser: 1001
+
+securityContext:
+  allowPrivilegeEscalation: false
+  capabilities:
+    drop:
+    - ALL
+  readOnlyRootFilesystem: true
+  runAsNonRoot: true
+  runAsUser: 1001
+
+livenessProbe:
+  httpGet:
+    path: /health
+    port: http
+  initialDelaySeconds: 30
+  periodSeconds: 10
+
+readinessProbe:
+  httpGet:
+    path: /health
+    port: http
+  initialDelaySeconds: 5
+  periodSeconds: 5
+
+env:
+  NODE_ENV: production
+  PORT: "3000"
+  
+secrets:
+  database:
+    name: healthcare-db-secret
+    key: DATABASE_URL
+  redis:
+    name: healthcare-redis-secret
+    key: REDIS_URL
+  jwt:
+    name: healthcare-jwt-secret
+    key: JWT_SECRET
+
+monitoring:
+  enabled: true
+  serviceMonitor:
+    enabled: true
+    interval: 30s
+    path: /metrics
+
+networkPolicy:
+  enabled: true
+  ingress:
+    - from:
+      - namespaceSelector:
+          matchLabels:
+            name: ingress-nginx
+      ports:
+      - protocol: TCP
+        port: 3000

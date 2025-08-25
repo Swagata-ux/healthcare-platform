@@ -1,0 +1,282 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum UserRole {
+  PATIENT
+  PROVIDER
+  ADMIN
+  STAFF
+}
+
+enum BookingStatus {
+  PENDING
+  CONFIRMED
+  CANCELLED
+  COMPLETED
+}
+
+enum ApplicationStatus {
+  APPLIED
+  SHORTLISTED
+  INTERVIEWED
+  HIRED
+  REJECTED
+}
+
+enum ShiftStatus {
+  SCHEDULED
+  CONFIRMED
+  CANCELLED
+  COMPLETED
+}
+
+model User {
+  id        String   @id @default(cuid())
+  email     String   @unique
+  phone     String?
+  role      UserRole
+  locale    String   @default("en")
+  timezone  String   @default("UTC")
+  verified  Boolean  @default(false)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Auth
+  passwordHash String?
+  refreshToken String?
+  lastLoginAt  DateTime?
+
+  // Relations
+  patient     Patient?
+  providerUser ProviderUser?
+  auditLogs   AuditLog[]
+  documents   Document[]
+  applications Application[]
+  shiftAssignments ShiftAssignment[]
+
+  @@map("users")
+}
+
+model Patient {
+  id     String @id @default(cuid())
+  userId String @unique
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  // Demographics (encrypted)
+  firstName    String
+  lastName     String
+  dateOfBirth  DateTime?
+  gender       String?
+  address      String?
+  emergencyContact String?
+  medicalNotes String? // Encrypted PHI
+
+  bookings Booking[]
+
+  @@map("patients")
+}
+
+model ProviderOrg {
+  id      String @id @default(cuid())
+  name    String
+  type    String // hospital, clinic, lab
+  address String
+  lat     Float?
+  lng     Float?
+  npiId   String? @unique
+
+  clinics Clinic[]
+
+  @@map("provider_orgs")
+}
+
+model Clinic {
+  id            String      @id @default(cuid())
+  providerOrgId String
+  providerOrg   ProviderOrg @relation(fields: [providerOrgId], references: [id])
+
+  name    String
+  address String
+  lat     Float?
+  lng     Float?
+  phone   String?
+
+  providerUsers ProviderUser[]
+  services      Service[]
+  slots         Slot[]
+  bookings      Booking[]
+  jobReqs       JobReq[]
+  shifts        Shift[]
+
+  @@map("clinics")
+}
+
+model ProviderUser {
+  id       String @id @default(cuid())
+  userId   String @unique
+  user     User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  clinicId String
+  clinic   Clinic @relation(fields: [clinicId], references: [id])
+
+  specialties String[] // JSON array
+  licenseNumber String?
+
+  @@map("provider_users")
+}
+
+model Service {
+  id          String @id @default(cuid())
+  clinicId    String
+  clinic      Clinic @relation(fields: [clinicId], references: [id])
+  name        String
+  description String?
+  durationMin Int
+  price       Decimal
+  type        String // consultation, lab, procedure
+
+  slots    Slot[]
+  bookings Booking[]
+
+  @@map("services")
+}
+
+model Slot {
+  id        String @id @default(cuid())
+  clinicId  String
+  clinic    Clinic @relation(fields: [clinicId], references: [id])
+  serviceId String
+  service   Service @relation(fields: [serviceId], references: [id])
+
+  startTime DateTime
+  endTime   DateTime
+  capacity  Int      @default(1)
+  available Int      @default(1)
+
+  bookings Booking[]
+
+  @@map("slots")
+}
+
+model Booking {
+  id        String        @id @default(cuid())
+  patientId String
+  patient   Patient       @relation(fields: [patientId], references: [id])
+  clinicId  String
+  clinic    Clinic        @relation(fields: [clinicId], references: [id])
+  serviceId String
+  service   Service       @relation(fields: [serviceId], references: [id])
+  slotId    String
+  slot      Slot          @relation(fields: [slotId], references: [id])
+
+  status      BookingStatus @default(PENDING)
+  notes       String?
+  totalAmount Decimal?
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+
+  @@map("bookings")
+}
+
+model Document {
+  id      String @id @default(cuid())
+  ownerId String
+  owner   User   @relation(fields: [ownerId], references: [id])
+
+  type        String // prescription, report, id_proof
+  filename    String
+  s3Key       String
+  checksum    String
+  encryptedMeta String? // Encrypted metadata
+  uploadedAt  DateTime @default(now())
+
+  @@map("documents")
+}
+
+model JobReq {
+  id       String @id @default(cuid())
+  clinicId String
+  clinic   Clinic @relation(fields: [clinicId], references: [id])
+
+  title        String
+  role         String
+  description  String
+  requirements String[]
+  shiftPattern String?
+  salary       Decimal?
+  isActive     Boolean  @default(true)
+  createdAt    DateTime @default(now())
+
+  applications Application[]
+
+  @@map("job_reqs")
+}
+
+model Application {
+  id       String @id @default(cuid())
+  jobReqId String
+  jobReq   JobReq @relation(fields: [jobReqId], references: [id])
+  userId   String
+  user     User   @relation(fields: [userId], references: [id])
+
+  status      ApplicationStatus @default(APPLIED)
+  coverLetter String?
+  resumeS3Key String?
+  appliedAt   DateTime          @default(now())
+  updatedAt   DateTime          @updatedAt
+
+  @@unique([jobReqId, userId])
+  @@map("applications")
+}
+
+model Shift {
+  id       String @id @default(cuid())
+  clinicId String
+  clinic   Clinic @relation(fields: [clinicId], references: [id])
+
+  role        String
+  startTime   DateTime
+  endTime     DateTime
+  neededCount Int
+  createdAt   DateTime @default(now())
+
+  assignments ShiftAssignment[]
+
+  @@map("shifts")
+}
+
+model ShiftAssignment {
+  id      String @id @default(cuid())
+  shiftId String
+  shift   Shift  @relation(fields: [shiftId], references: [id])
+  userId  String
+  user    User   @relation(fields: [userId], references: [id])
+
+  status      ShiftStatus @default(SCHEDULED)
+  assignedAt  DateTime    @default(now())
+  confirmedAt DateTime?
+
+  @@unique([shiftId, userId])
+  @@map("shift_assignments")
+}
+
+model AuditLog {
+  id       String @id @default(cuid())
+  actorId  String
+  actor    User   @relation(fields: [actorId], references: [id])
+
+  action     String
+  entity     String
+  entityId   String
+  changes    Json?
+  ipAddress  String?
+  userAgent  String?
+  occurredAt DateTime @default(now())
+
+  @@map("audit_logs")
+}
